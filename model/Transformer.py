@@ -30,7 +30,8 @@ class FeedForward(nn.Module):
 class Transformer(nn.Module):
     def __init__(self, cfg):
         super().__init__()
-        self.LayerNorm = nn.LayerNorm(cfg["emb_dim"])
+        self.ln_1 = nn.LayerNorm(cfg["emb_dim"], eps=1e-5, elementwise_affine=True)
+        self.ln_2 = nn.LayerNorm(cfg["emb_dim"], eps=1e-5, elementwise_affine=True)
         self.m_attention = MultiHeadAttention(
             d_in = cfg["emb_dim"],
             d_out = cfg["emb_dim"],
@@ -45,15 +46,14 @@ class Transformer(nn.Module):
 
     def forward(self, x):
         shortcut = x
-        x = self.LayerNorm(x)
+        x = self.ln_1(x)
         x = self.m_attention(x)
-        x = self.ff(x)
         x = self.dropout(x)
         x = x + shortcut
 
         shortcut = x
 
-        x = self.LayerNorm(x)
+        x = self.ln_2(x)
         x = self.ff(x)
         x = self.dropout(x)
         x = x + shortcut
