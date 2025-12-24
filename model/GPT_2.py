@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from model.Transformer import Transformer
+from model.Transformer import Transformer, LayerNorm
 GPT_CONFIG_124M = {
 "vocab_size": 50257, # Vocabulary size
 "context_length": 256, # Context length
@@ -18,11 +18,11 @@ class GPT2(nn.Module):
         self.token_embedding = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
         self.position_embedding = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
         self.dropout = nn.Dropout(cfg["drop_rate"])
-        self.transformer_blocks  =nn.ModuleList([
+        self.trf_blocks  =nn.ModuleList([
             Transformer(cfg) for _ in range(cfg["n_layers"])
         ])
-        self.layer_norm = nn.LayerNorm(cfg["emb_dim"])
-        self.proj = nn.Linear(cfg["emb_dim"], cfg["vocab_size"])
+        self.final_norm = LayerNorm(cfg["emb_dim"])
+        self.out_head = nn.Linear(cfg["emb_dim"], cfg["vocab_size"])
 
     def forward(self, x):
         batch_size, sqe_len = x.shape
@@ -30,8 +30,8 @@ class GPT2(nn.Module):
         position_emd = self.position_embedding(torch.arange(0, sqe_len, device=x.device))
         x = token_emd + position_emd
         x = self.dropout(x)
-        for block in self.transformer_blocks:
+        for block in self.trf_blocks:
             x = block(x)
-        x = self.layer_norm(x)
-        x = self.proj(x)
+        x = self.final_norm(x)
+        x = self.out_head(x)
         return x

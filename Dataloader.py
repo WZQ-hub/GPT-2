@@ -4,10 +4,10 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import tiktoken
 
-with open("data/the-verdict.txt", "r", encoding="utf-8") as f:
-    raw_data = f.read() # 读取文本数据
-# print(len(raw_data))
-# print(raw_data)
+# with open("data/the-verdict.txt", "r", encoding="utf-8") as f:
+#     raw_data = f.read() # 读取文本数据
+# # print(len(raw_data))
+# # print(raw_data)
 
 class GPTDataloaderV1(Dataset):
     def __init__(self, data, tokenizer, max_length, stride):

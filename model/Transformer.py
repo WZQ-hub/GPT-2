@@ -15,24 +15,37 @@ GPT_CONFIG_124M = {
 class FeedForward(nn.Module):
     def __init__(self, cfg):
         super().__init__()
-        self.ff1 = nn.Linear(cfg["emb_dim"], 4 * cfg["emb_dim"])
-        self.GELU = nn.GELU()
-        self.ff2 = nn.Linear(4 * cfg["emb_dim"], cfg["emb_dim"])
+        self.layers = nn.Sequential(
+            nn.Linear(cfg["emb_dim"], 4 * cfg["emb_dim"]),
+            nn.GELU(),
+            nn.Linear(4 * cfg["emb_dim"], cfg["emb_dim"]),
+        )
 
 
 
     def forward(self, x):
-        x = self.ff1(x)
-        x = self.GELU(x)
-        x = self.ff2(x)
+        x = self.layers(x)
         return x
+
+class LayerNorm(nn.Module):
+    def __init__(self, emb_dim):
+        super().__init__()
+        self.eps = 1e-5
+        self.scale = nn.Parameter(torch.ones(emb_dim))
+        self.shift = nn.Parameter(torch.zeros(emb_dim))
+    def forward(self, x):
+        mean = x.mean(dim=-1, keepdim=True)
+        var = x.var(dim=-1, keepdim=True, unbiased=False)
+        norm_x = (x - mean) / torch.sqrt(var + self.eps)
+        return self.scale * norm_x + self.shift
+
 
 class Transformer(nn.Module):
     def __init__(self, cfg):
         super().__init__()
-        self.ln_1 = nn.LayerNorm(cfg["emb_dim"], eps=1e-5, elementwise_affine=True)
-        self.ln_2 = nn.LayerNorm(cfg["emb_dim"], eps=1e-5, elementwise_affine=True)
-        self.m_attention = MultiHeadAttention(
+        self.norm1 = LayerNorm(cfg["emb_dim"])
+        self.norm2 = LayerNorm(cfg["emb_dim"])
+        self.att = MultiHeadAttention(
             d_in = cfg["emb_dim"],
             d_out = cfg["emb_dim"],
             context_length = cfg["context_length"],
@@ -46,14 +59,14 @@ class Transformer(nn.Module):
 
     def forward(self, x):
         shortcut = x
-        x = self.ln_1(x)
-        x = self.m_attention(x)
+        x = self.norm1(x)
+        x = self.att(x)
         x = self.dropout(x)
         x = x + shortcut
 
         shortcut = x
 
-        x = self.ln_2(x)
+        x = self.norm2(x)
         x = self.ff(x)
         x = self.dropout(x)
         x = x + shortcut

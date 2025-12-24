@@ -14,7 +14,7 @@ class MultiHeadAttention(nn.Module):
         self.num_heads = num_heads
 
         self.dropout = nn.Dropout(dropout)
-        self.proj = nn.Linear(d_out, d_out)
+        self.out_proj = nn.Linear(d_out, d_out)
         self.register_buffer("mask", torch.triu(torch.ones(context_length, context_length), diagonal=1))
 
     def forward(self, x):
@@ -48,7 +48,7 @@ class MultiHeadAttention(nn.Module):
             batch_size, num_tokens, self.d_out
         )
 
-        output = self.proj(context_vec)
+        output = self.out_proj(context_vec)
         return output
 
 # inputs = torch.tensor(

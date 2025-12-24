@@ -1,12 +1,10 @@
+import os
+
 import torch
 from model.GPT_2 import GPT2, GPT_CONFIG_124M
 import torch.nn as nn
 import tiktoken
 from Dataloader import create_dataloader_v1
-
-torch.manual_seed(123)
-model = GPT2(GPT_CONFIG_124M)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # model.eval()
 # print(model)
 
@@ -46,34 +44,6 @@ def text_to_token_ids(text, tokenizer):
 # token_ids = generate_text_simple(
 # model=model, idx=text_to_token_ids(start_context, tokenizer), max_new_tokens=10, context_length=GPT_CONFIG_124M["context_length"] )
 # print("Output text:\n", tokens_to_text(token_ids, tokenizer))
-
-with open("data/the-verdict.txt", "r", encoding="utf-8") as f:
-    raw_data = f.read()
-tokenizer = tiktoken.get_encoding("gpt2")
-total_characters = len(raw_data)
-total_tokens = len(tokenizer.encode(raw_data))
-# print(total_characters)
-# print(total_tokens)
-
-train_rate = 0.90
-split_idx = int(len(raw_data) * train_rate)
-train_data = raw_data[:split_idx]
-val_data = raw_data[split_idx:]
-
-train_loader = create_dataloader_v1(train_data,
-                                    batch_size=2,
-                                    shuffle=True,
-                                    max_length=GPT_CONFIG_124M["context_length"],
-                                    stride=GPT_CONFIG_124M["context_length"],
-                                    drop_last=True,
-                                    num_workers=0)
-val_loader = create_dataloader_v1(val_data,
-                                  batch_size=2,
-                                  shuffle=False,
-                                  max_length=GPT_CONFIG_124M["context_length"],
-                                  stride=GPT_CONFIG_124M["context_length"],
-                                  drop_last=False,
-                                  num_workers=0)
 
 # print("Train loader:")
 # for x, y in train_loader:
@@ -155,17 +125,6 @@ def generate_and_print_sample(model, tokenizer, device, start_context):
     model.train()
 
 
-model.to(device)
-optimizer = torch.optim.AdamW(
-    model.parameters(),
-    lr=0.0004, weight_decay=0.1
-)
-num_epochs = 10
-train_losses, val_losses, tokens_seen = train_model_simple(
-    model, train_loader, val_loader, optimizer, device,
-    num_epochs=num_epochs, eval_freq=5, eval_iter=5,
-    start_context="Every effort moves you", tokenizer=tokenizer
-)
 
 # Generate text with temperature and top-k sampling
 def generate(model, idx, max_new_tokens, context_size, temperature=0.0, top_k=None, eos_id=None):
@@ -189,13 +148,64 @@ def generate(model, idx, max_new_tokens, context_size, temperature=0.0, top_k=No
         idx = torch.cat((idx, idx_next), dim=1)
     return idx
 
-torch.manual_seed(123)
-token_ids = generate(
-model=model,
-idx=text_to_token_ids("Every effort moves you", tokenizer),
-max_new_tokens=15,
-context_size=GPT_CONFIG_124M["context_length"],
-top_k=25,
-temperature=1.4
-)
-print("Output text:\n", tokens_to_text(token_ids, tokenizer))
+# torch.manual_seed(123)
+# token_ids = generate(
+# model=model,
+# idx=text_to_token_ids("Every effort moves you", tokenizer),
+# max_new_tokens=15,
+# context_size=GPT_CONFIG_124M["context_length"],
+# top_k=25,
+# temperature=1.4
+# )
+# print("Output text:\n", tokens_to_text(token_ids, tokenizer))
+
+if __name__ == "__main__":
+    # 1. 基础设置
+    torch.manual_seed(123)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tokenizer = tiktoken.get_encoding("gpt2")
+
+    # 2. 初始化模型
+    model = GPT2(GPT_CONFIG_124M)
+    model.to(device)
+
+    # 3. 加载数据 (使用绝对路径或确保运行路径正确)
+    # 建议加上路径检查，防止 FileNotFoundError
+    file_path = "data/the-verdict.txt"
+    if not os.path.exists(file_path):
+        # 尝试向上级找一级，适配在 model/ 目录下运行的情况
+        file_path = os.path.join("..", "data", "the-verdict.txt")
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        raw_data = f.read()
+
+    # 4. 数据预处理与 DataLoader
+    train_rate = 0.90
+    split_idx = int(len(raw_data) * train_rate)
+    train_data = raw_data[:split_idx]
+    val_data = raw_data[split_idx:]
+
+    train_loader = create_dataloader_v1(
+        train_data, batch_size=2, shuffle=True,
+        max_length=GPT_CONFIG_124M["context_length"],
+        stride=GPT_CONFIG_124M["context_length"],
+        drop_last=True, num_workers=0
+    )
+    val_loader = create_dataloader_v1(
+        val_data, batch_size=2, shuffle=False,
+        max_length=GPT_CONFIG_124M["context_length"],
+        stride=GPT_CONFIG_124M["context_length"],
+        drop_last=False, num_workers=0
+    )
+
+    # 5. 训练配置
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.0004, weight_decay=0.1)
+    num_epochs = 10
+
+    # 6. 开始训练
+    print("Starting training...")
+    train_losses, val_losses, tokens_seen = train_model_simple(
+        model, train_loader, val_loader, optimizer, device,
+        num_epochs=num_epochs, eval_freq=5, eval_iter=5,
+        start_context="Every effort moves you", tokenizer=tokenizer
+    )
