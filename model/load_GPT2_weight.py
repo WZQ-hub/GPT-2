@@ -1,7 +1,5 @@
 import torch
 import numpy as np
-from GPT_2 import GPT2
-from gpt_download import download_and_load_gpt2
 
 # --- 1. 配置信息 (作为常量保留) ---
 GPT_CONFIG_124M = {
@@ -71,25 +69,5 @@ def load_weights_into_gpt(gpt, params):
     gpt.final_norm.shift = assign(gpt.final_norm.shift, params["b"])
     gpt.out_head.weight = assign(gpt.out_head.weight, params["wte"])
 
-    print(f"Successfully loaded weights into GPT model.")
+    # print(f"Successfully loaded weights into GPT model.")
 
-
-# --- 3. 运行入口 (只有直接运行此文件才会执行) ---
-
-if __name__ == "__main__":
-    # 只有你想单独测试这个文件时，这些代码才运行
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # 初始化模型
-    gpt = GPT2(GPT_CONFIG_124M)
-
-    # 下载并读取权重
-    settings, params = download_and_load_gpt2(model_size="124M", models_dir="gpt2")
-
-    # 执行加载
-    load_weights_into_gpt(gpt, params)
-
-    # 测试运行
-    gpt.to(device)
-    gpt.eval()
-    print("Model is ready for inference.")
