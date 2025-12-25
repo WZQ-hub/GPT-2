@@ -29,23 +29,24 @@ settings, params = download_and_load_gpt2(
 model_size=model_size, models_dir="gpt2"
 )
 
-model = GPT2(BASE_CONFIG)
-load_weights_into_gpt(model, params)
-model.eval()
+def create_model_for_finetuning():
+    model = GPT2(BASE_CONFIG)
+    load_weights_into_gpt(model, params)
+    model.eval()
 
-for param in model.parameters():
-    param.requires_grad = False
+    for param in model.parameters():
+        param.requires_grad = False
 
-torch.manual_seed(123)
-num_classes = 2
-model.out_head = torch.nn.Linear(
-    in_features=BASE_CONFIG["emb_dim"],
-    out_features=num_classes
-)
-for param in model.trf_blocks[-1].parameters():
-    param.requires_grad = True
-for param in model.final_norm.parameters():
-    param.requires_grad = True
+    num_classes = 2
+    model.out_head = torch.nn.Linear(
+        in_features=BASE_CONFIG["emb_dim"],
+        out_features=num_classes
+    )
+    for param in model.trf_blocks[-1].parameters():
+        param.requires_grad = True
+    for param in model.final_norm.parameters():
+        param.requires_grad = True
+    return model
 
 def calc_accuracy_loader(data_loader, model, device, num_batches=None):
     model.eval()
@@ -144,40 +145,40 @@ def evaluate_model(model, train_loader, val_loader, device, eval_iter):
         model.train()
         return train_loss, val_loss
 
-import time
-start_time = time.time()
-torch.manual_seed(123)
-optimizer = torch.optim.AdamW(model.parameters(), lr=5e-5, weight_decay=0.1)
-num_epochs = 5
-train_losses, val_losses, train_accs, val_accs, examples_seen = \
-train_model_simple(
-model, train_loader, val_loader, optimizer, device,
-num_epochs=num_epochs, eval_freq=50,
-eval_iter=5
-)
-end_time = time.time()
-execution_time_minutes = (end_time - start_time) / 60
-print(f"Training completed in {execution_time_minutes:.2f} minutes.")
-
-import matplotlib.pyplot as plt
-def plot_values(
-epochs_seen, examples_seen, train_values, val_values,
-label="loss"):
-    fig, ax1 = plt.subplots(figsize=(5, 3))
-    ax1.plot(epochs_seen, train_values, label=f"Training {label}")
-    ax1.plot(
-epochs_seen, val_values, linestyle="-.",
-    label=f"Validation {label}"
-    )
-    ax1.set_xlabel("Epochs")
-    ax1.set_ylabel(label.capitalize())
-    ax1.legend()
-    ax2 = ax1.twiny()
-    ax2.plot(examples_seen, train_values, alpha=0)
-    ax2.set_xlabel("Examples seen")
-    fig.tight_layout()
-    plt.savefig(f"{label}-plot.pdf")
-    plt.show()
-epochs_tensor = torch.linspace(0, num_epochs, len(train_losses))
-examples_seen_tensor = torch.linspace(0, examples_seen, len(train_losses))
-plot_values(epochs_tensor, examples_seen_tensor, train_losses, val_losses)
+# import time
+# start_time = time.time()
+# torch.manual_seed(123)
+# optimizer = torch.optim.AdamW(model.parameters(), lr=5e-5, weight_decay=0.1)
+# num_epochs = 5
+# train_losses, val_losses, train_accs, val_accs, examples_seen = \
+# train_model_simple(
+# model, train_loader, val_loader, optimizer, device,
+# num_epochs=num_epochs, eval_freq=50,
+# eval_iter=5
+# )
+# end_time = time.time()
+# execution_time_minutes = (end_time - start_time) / 60
+# print(f"Training completed in {execution_time_minutes:.2f} minutes.")
+#
+# import matplotlib.pyplot as plt
+# def plot_values(
+# epochs_seen, examples_seen, train_values, val_values,
+# label="loss"):
+#     fig, ax1 = plt.subplots(figsize=(5, 3))
+#     ax1.plot(epochs_seen, train_values, label=f"Training {label}")
+#     ax1.plot(
+# epochs_seen, val_values, linestyle="-.",
+#     label=f"Validation {label}"
+#     )
+#     ax1.set_xlabel("Epochs")
+#     ax1.set_ylabel(label.capitalize())
+#     ax1.legend()
+#     ax2 = ax1.twiny()
+#     ax2.plot(examples_seen, train_values, alpha=0)
+#     ax2.set_xlabel("Examples seen")
+#     fig.tight_layout()
+#     plt.savefig(f"{label}-plot.pdf")
+#     plt.show()
+# epochs_tensor = torch.linspace(0, num_epochs, len(train_losses))
+# examples_seen_tensor = torch.linspace(0, examples_seen, len(train_losses))
+# plot_values(epochs_tensor, examples_seen_tensor, train_losses, val_losses)
