@@ -7,27 +7,6 @@ from dataloader import train_loader, val_loader, test_loader
 import tiktoken
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-tokenizer = tiktoken.get_encoding("gpt2")
-CHOOSE_MODEL = "gpt2-small (124M)"
-INPUT_PROMPT = "Every effort moves"
-BASE_CONFIG = {
-"vocab_size": 50257,
-"context_length": 1024,
-"drop_rate": 0.0,
-"qkv_bias": True
-}
-model_configs = {
-"gpt2-small (124M)": {"emb_dim": 768, "n_layers": 12, "n_heads": 12},
-"gpt2-medium (355M)": {"emb_dim": 1024, "n_layers": 24, "n_heads": 16},
-"gpt2-large (774M)": {"emb_dim": 1280, "n_layers": 36, "n_heads": 20},
-"gpt2-xl (1558M)": {"emb_dim": 1600, "n_layers": 48, "n_heads": 25},
-}
-BASE_CONFIG.update(model_configs[CHOOSE_MODEL])
-model_size = CHOOSE_MODEL.split(" ")[-1].lstrip("(").rstrip(")")
-settings, params = download_and_load_gpt2(
-model_size=model_size, models_dir="gpt2"
-)
 
 def create_model_for_finetuning():
     model = GPT2(BASE_CONFIG)
@@ -182,3 +161,26 @@ def evaluate_model(model, train_loader, val_loader, device, eval_iter):
 # epochs_tensor = torch.linspace(0, num_epochs, len(train_losses))
 # examples_seen_tensor = torch.linspace(0, examples_seen, len(train_losses))
 # plot_values(epochs_tensor, examples_seen_tensor, train_losses, val_losses)
+
+if __name__ == "__main__":
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tokenizer = tiktoken.get_encoding("gpt2")
+    CHOOSE_MODEL = "gpt2-small (124M)"
+    INPUT_PROMPT = "Every effort moves"
+    BASE_CONFIG = {
+        "vocab_size": 50257,
+        "context_length": 1024,
+        "drop_rate": 0.0,
+        "qkv_bias": True
+    }
+    model_configs = {
+        "gpt2-small (124M)": {"emb_dim": 768, "n_layers": 12, "n_heads": 12},
+        "gpt2-medium (355M)": {"emb_dim": 1024, "n_layers": 24, "n_heads": 16},
+        "gpt2-large (774M)": {"emb_dim": 1280, "n_layers": 36, "n_heads": 20},
+        "gpt2-xl (1558M)": {"emb_dim": 1600, "n_layers": 48, "n_heads": 25},
+    }
+    BASE_CONFIG.update(model_configs[CHOOSE_MODEL])
+    model_size = CHOOSE_MODEL.split(" ")[-1].lstrip("(").rstrip(")")
+    settings, params = download_and_load_gpt2(
+        model_size=model_size, models_dir="gpt2"
+    )
